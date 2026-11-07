@@ -11,7 +11,7 @@ Requer Node.js 22 ou mais recente. Não há dependências para instalar.
 3. Execute `npm start` nesta pasta.
 4. Abra http://localhost:3000. Em “Acesso à geração por IA”, informe o código APP_PASSWORD, nunca a chave do Gemini.
 
-Não envie `.env` ou a chave para repositórios ou para o navegador. A chave tem custo/quota da conta responsável. No Sites, configure as três variáveis como segredos de execução e reimplante. O Site inicialmente é privado do proprietário: Arícia precisará receber acesso autorizado para usar a versão hospedada.
+Não envie `.env` ou a chave para repositórios ou para o navegador. A chave tem custo/quota da conta responsável. No Sites, configure as três variáveis como segredos de execução e reimplante. O site foi liberado por solicitação do proprietário para acesso público por link, com código de acesso obrigatório para geração. Não inclua esse código no repositório.
 
 ## Sem chave
 
@@ -50,6 +50,14 @@ O navegador envia `Content-Type: application/json` e `x-app-password` quando con
 Fotos e documentos anexados são enviados ao Gemini para análise. Esta versão não gera imagens nem publica conteúdo. Os textos, inclusive os gerados pela IA, precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
 
 ## Anexos
+
+## Sugestões de imagem por peça
+
+Novas campanhas incluem `imagemCapa`, `imagensCards` e `imagensStories`. Cada sugestão tem `{ "arquivo": "nome-exato-da-foto.jpg ou string vazia", "orientacao": "Como fotografar ou compor a imagem" }`. As listas têm a mesma quantidade e ordem dos cards/cenas e stories. O servidor rejeita referências a nomes inexistentes e documentos citados como foto.
+
+A interface apresenta a sugestão junto de cada texto, com enquadramento, fundo/cores e espaço para o título. Quando não houver uma foto adequada, sugere uma nova foto/tomada. Não são geradas imagens: as orientações são textuais. É possível editar, copiar, salvar, exportar e baixar as sugestões junto da campanha. Campanhas antigas continuam abrindo e exibem um aviso quando não têm sugestões.
+
+### Formatos e armazenamento dos anexos
 
 O formulário aceita JPG, PNG, WebP, PDF, TXT e CSV (UTF-8), com prévias de fotos e remoção individual. Limites: 5 arquivos, 4 MB por arquivo e 8 MB no total. Word e Excel devem ser exportados para PDF ou CSV; vídeos não são aceitos. O navegador envia `attachments: [{name, mimeType, data}]` com base64 no JSON de `POST /api/generate`. O servidor valida tipo, assinatura básica, codificação e tamanho antes da chamada ao Gemini. Fotos e PDFs seguem como `inlineData`; TXT/CSV seguem como texto. Limite do corpo HTTP: 12 MiB, incluindo a expansão base64.
 

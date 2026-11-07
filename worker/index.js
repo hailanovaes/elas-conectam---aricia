@@ -41,13 +41,24 @@ async function readLimitedBody(request) {
  const bytes=new Uint8Array(size);let offset=0;for(const chunk of chunks){bytes.set(chunk,offset);offset+=chunk.byteLength;}
  return new TextDecoder().decode(bytes);
 }
-export function validCampaign(x){return x && fields.every(k=>typeof x[k]==='string'&&x[k].trim()&&x[k].length<5000)&&Array.isArray(x.cards)&&x.cards.length>=3&&x.cards.length<=5&&x.cards.every(c=>typeof c==='string'&&c.length>0&&c.length<=600)&&Array.isArray(x.stories)&&x.stories.length===3&&x.stories.every(c=>typeof c==='string'&&c.length>0&&c.length<=1000)&&Array.isArray(x.capturas)&&x.capturas.length<=6&&x.capturas.every(c=>typeof c==='string'&&c.length<=1000);}
+export function validCampaign(x){return !!(x && fields.every(k=>typeof x[k]==='string'&&x[k].trim()&&x[k].length<5000)&&Array.isArray(x.cards)&&x.cards.length>=3&&x.cards.length<=5&&x.cards.every(c=>typeof c==='string'&&c.length>0&&c.length<=600)&&Array.isArray(x.stories)&&x.stories.length===3&&x.stories.every(c=>typeof c==='string'&&c.length>0&&c.length<=1000)&&Array.isArray(x.capturas)&&x.capturas.length<=6&&x.capturas.every(c=>typeof c==='string'&&c.length<=1000)&&validImageSuggestions(x));}
+function validImageSuggestions(x) {
+ const valid = image => image && typeof image.arquivo === 'string' && image.arquivo.length<=240 && typeof image.orientacao==='string' && image.orientacao.trim().length>0 && image.orientacao.length<=1800;
+ return valid(x.imagemCapa) && Array.isArray(x.imagensCards) && x.imagensCards.length===x.cards.length && x.imagensCards.every(valid) && Array.isArray(x.imagensStories) && x.imagensStories.length===x.stories.length && x.imagensStories.every(valid);
+}
+function validatePhotoReferences(campaign, files) {
+ const photos=new Set(files.filter(file=>file.mimeType.startsWith('image/')).map(file=>file.name));
+ for(const image of [campaign.imagemCapa,...campaign.imagensCards,...campaign.imagensStories]) {
+  if(image.arquivo && !photos.has(image.arquivo)) throw new Error('A sugestão citou uma foto não anexada. Tente gerar novamente.');
+ }
+}
 // Server-only: converts the validated brief into a campaign object.
 // Never return the provider response, credentials or raw error body to the browser.
 export async function generateCampaign(env, brief, history = [], fetchImpl = fetch, attachments = []) {
  if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL) {
   throw new Error('Gemini ainda não configurado. Defina GEMINI_API_KEY e GEMINI_MODEL no servidor. O exemplo funciona sem IA.');
  }
+ const imageSchema={type:'object',properties:{arquivo:{type:'string',description:'Nome exato de uma foto anexada (JPG, PNG, WebP), ou string vazia para uma nova foto a produzir. Nunca inventar nome nem usar PDF ou TXT como foto.'},orientacao:{type:'string',description:'Orientação prática em português: assunto da imagem, enquadramento/recorte, fundo/cores e posição do texto. Para Reel, descreva também a tomada. Até 100 palavras.'}},required:['arquivo','orientacao']};
  const schema = {
   type: 'object',
   properties: Object.fromEntries([
@@ -56,9 +67,12 @@ export async function generateCampaign(env, brief, history = [], fetchImpl = fet
     type: 'array', items: {type: 'string'},
     minItems: key === 'capturas' ? 0 : 3,
     maxItems: key === 'cards' ? 5 : key === 'stories' ? 3 : 6
-   }])
+   }]),
+   ['imagemCapa',imageSchema],
+   ['imagensCards',{type:'array',items:imageSchema,minItems:3,maxItems:5}],
+   ['imagensStories',{type:'array',items:imageSchema,minItems:3,maxItems:3}]
   ]),
-  required: [...fields,'cards','stories','capturas']
+  required: [...fields,'cards','stories','capturas','imagemCapa','imagensCards','imagensStories']
  };
  const files = validateAttachments(attachments);
  const parts = [{text:JSON.stringify({brief,historico:Array.isArray(history)?history.slice(0,5):[],anexos:files.map(({name,mimeType})=>({name,mimeType}))})}];
@@ -76,7 +90,7 @@ export async function generateCampaign(env, brief, history = [], fetchImpl = fet
     method: 'POST',
     headers: {'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
     body: JSON.stringify({
-     systemInstruction: {parts: [{text: instruction}]},
+     systemInstruction: {parts: [{text: instruction+' Para cada capa, card/cena e story, gere uma sugestão de imagem específica em imagemCapa, imagensCards e imagensStories. As listas de imagens devem ter exatamente a mesma quantidade e ordem de cards e stories. Priorize uma foto real anexada adequada: cite seu nome exato em arquivo. Se não houver foto apropriada (inclusive quando há somente um logo ou cardápio), arquivo deve ser vazio e a orientação deve explicar o que fotografar. Não trate imagem de logo como foto do produto. Não afirme que uma foto de recheio, embalagem ou produto existe sem vê-la. Sugira enquadramento, fundo/cores e espaço para texto, sem alterar a aparência real dos doces. Para Reel, sugira cenas a gravar usando a foto como referência; não diga que é um vídeo anexado. São sugestões textuais, não imagens geradas.'}]},
      contents: [{role:'user',parts}],
      generationConfig: {responseMimeType:'application/json',responseJsonSchema:schema}
     }),
@@ -102,6 +116,7 @@ export async function generateCampaign(env, brief, history = [], fetchImpl = fet
   throw new Error('Resposta incompleta ou bloqueada. Tente gerar novamente.');
  }
  if (!validCampaign(result)) throw new Error('Resposta fora do formato esperado. Tente novamente.');
+ validatePhotoReferences(result,files);
  return result;
 }
 export default {async fetch(request,env){

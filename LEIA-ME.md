@@ -25,6 +25,8 @@ O formulário aceita fotos JPG, PNG e WebP, além de PDF, TXT e CSV (UTF-8). At�
 
 ## Histórico e privacidade
 
+Novas campanhas sugerem uma imagem para a capa e para cada card/cena e story, indicando o nome de uma foto anexada adequada ou orientando uma nova captura. As sugestões são editáveis e acompanham os textos ao copiar, baixar ou salvar. Trata-se de orientação visual, não de geração de imagens.
+
 Campanhas, perfil e resultados ficam apenas no localStorage do navegador/dispositivo. Não sincronizam entre dispositivos. Limpar dados do navegador pode apagar o histórico. Use Exportar backup e Importar backup. Chave e código de acesso não são salvos nesse histórico. Não inclua dados de clientes ou informações pessoais sensíveis nos campos. Perfil, briefing e resumo de até cinco campanhas publicadas e geradas com IA são enviados ao Gemini para contextualização. A publicação no Instagram e o registro de métricas são manuais. O exemplo fixo não é usado como histórico de IA.
 
 ## Verificações
