@@ -21,6 +21,32 @@ Não envie `.env` ou a chave para repositórios ou para o navegador. A chave tem
 
 Formulário → servidor → Gemini → validação JSON → campos editáveis → copiar/baixar → publicação manual → resultados informados → contexto das próximas campanhas.
 
+## Função do servidor e contrato JSON
+
+`generateCampaign(env, brief, history)` em `worker/index.js` chama o Gemini com saída estruturada, valida os campos e retorna um objeto de campanha. É usada pela rota `POST /api/generate`, tanto no servidor Node.js quanto no Worker do Sites. Requer modelo com suporte a saída estruturada.
+
+O formulário envia este corpo (todas as informações abaixo são exemplos):
+
+```json
+{
+  "brief": {
+    "produto": "Nanotone",
+    "diferencial": "Panetone de bolso recheado e coberto com chocolate",
+    "regiao": "São Paulo e ABC, mediante consulta para o bairro",
+    "objetivo": "Atrair novos clientes",
+    "material": "Tenho fotos reais do produto",
+    "formato": "Carrossel"
+  },
+  "history": []
+}
+```
+
+Sucesso: `200` com `{ "campaign": { "titulo": "...", "hipotese": "...", "capa": "...", "cards": ["...", "...", "..."], "legenda": "...", "cta": "...", "stories": ["...", "...", "..."], "capturas": [] } }`.
+
+Erro: `{ "error": "Mensagem para a interface" }`. Códigos: `400` para entrada inválida, `401` para código de acesso inválido, `403` para origem diferente, `405` para método incorreto, `413` para corpo grande, `503` para configuração ausente e `502` para falha do Gemini. A chamada ao provedor tem prazo de 40 segundos. Respostas bloqueadas, truncadas ou fora do formato não são entregues como campanhas válidas.
+
+O navegador envia `Content-Type: application/json` e `x-app-password` quando configurado. A origem deve corresponder à aplicação. A chave do Gemini é acrescentada apenas pelo servidor no cabeçalho `x-goog-api-key`. `npm test` executa os testes com provedor simulado, sem chave nem consumo real da API.
+
 As fotos/vídeos são usados diretamente na rede social. Esta versão não recebe arquivos, gera imagens ou publica conteúdo. Os textos, inclusive os gerados pela IA, precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
 
 ## Histórico e privacidade
