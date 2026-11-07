@@ -72,6 +72,7 @@ export async function generateImage(env,prompt,attachments=[],fetchImpl=fetch){
 // Server-only: converts the validated brief into a campaign object.
 // Never return the provider response, credentials or raw error body to the browser.
 export async function generateCampaign(env, brief, history = [], fetchImpl = fetch, attachments = []) {
+ if(brief.perfilCliente!==undefined&&(typeof brief.perfilCliente!=='string'||brief.perfilCliente.length>1200))throw new Error('Descreva o perfil do cliente em até 1200 caracteres.');
  if (!env.GEMINI_API_KEY || !env.GEMINI_MODEL) {
   throw new Error('Gemini ainda não configurado. Defina GEMINI_API_KEY e GEMINI_MODEL no servidor. O exemplo funciona sem IA.');
  }
@@ -107,7 +108,7 @@ export async function generateCampaign(env, brief, history = [], fetchImpl = fet
     method: 'POST',
     headers: {'Content-Type':'application/json','x-goog-api-key':env.GEMINI_API_KEY},
     body: JSON.stringify({
-     systemInstruction: {parts: [{text: instruction+' Para cada capa, card/cena e story, gere uma sugestão de imagem específica em imagemCapa, imagensCards e imagensStories. As listas de imagens devem ter exatamente a mesma quantidade e ordem de cards e stories. Priorize uma foto real anexada adequada: cite seu nome exato em arquivo. Se não houver foto apropriada (inclusive quando há somente um logo ou cardápio), arquivo deve ser vazio e a orientação deve explicar o que fotografar. Não trate imagem de logo como foto do produto. Não afirme que uma foto de recheio, embalagem ou produto existe sem vê-la. Sugira enquadramento, fundo/cores e espaço para texto, sem alterar a aparência real dos doces. Para Reel, sugira cenas a gravar usando a foto como referência; não diga que é um vídeo anexado. São sugestões textuais, não imagens geradas.'}]},
+     systemInstruction: {parts: [{text: instruction+' Se brief.perfilCliente estiver preenchido, adapte o gancho, os argumentos, a legenda, a chamada, os stories e as sugestões visuais à ocasião, às necessidades e ao público descritos. Por exemplo: uma mãe organizando um jantar de Natal pode procurar uma sobremesa para compartilhar em família. Não presuma características ou preferências não informadas, não use estereótipos e não prometa soluções que o produto não oferece. Se o perfil estiver vazio, use uma comunicação geral. Para cada capa, card/cena e story, gere uma sugestão de imagem específica em imagemCapa, imagensCards e imagensStories. As listas de imagens devem ter exatamente a mesma quantidade e ordem de cards e stories. Priorize uma foto real anexada adequada: cite seu nome exato em arquivo. Se não houver foto apropriada (inclusive quando há somente um logo ou cardápio), arquivo deve ser vazio e a orientação deve explicar o que fotografar. Não trate imagem de logo como foto do produto. Não afirme que uma foto de recheio, embalagem ou produto existe sem vê-la. Sugira enquadramento, fundo/cores e espaço para texto, sem alterar a aparência real dos doces. Para Reel, sugira cenas a gravar usando a foto como referência; não diga que é um vídeo anexado. São sugestões textuais, não imagens geradas.'}]},
      contents: [{role:'user',parts}],
      generationConfig: {responseMimeType:'application/json',responseJsonSchema:schema}
     }),
@@ -155,6 +156,7 @@ export default {async fetch(request,env){
  }
  const d=input?.brief;
  if(!d||!['produto','diferencial','regiao','objetivo','material','formato'].every(k=>typeof d[k]==='string'&&d[k].trim()&&d[k].length<=1500))return reply({error:'Preencha produto, diferencial, região, objetivo, material e formato.'},400);
+ if(d.perfilCliente!==undefined&&(typeof d.perfilCliente!=='string'||d.perfilCliente.length>1200))return reply({error:'Descreva o perfil do cliente em até 1200 caracteres.'},400);
  let attachments;try{attachments=validateAttachments(input.attachments);}catch(error){return reply({error:error.message},400);}
  try{
  const result=await generateCampaign(env,d,input.history,fetch,attachments);

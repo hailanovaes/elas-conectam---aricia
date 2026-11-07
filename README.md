@@ -19,6 +19,8 @@ Não envie `.env` ou a chave para repositórios ou para o navegador. A chave tem
 
 ## Fluxo
 
+O campo opcional “Para quem é esse conteúdo?” aceita até 1200 caracteres sobre perfil, ocasião e necessidades do público, por exemplo: “Mãe organizando um jantar de Natal”. O valor `brief.perfilCliente` contextualiza textos e sugestões visuais, acompanha a campanha salva e a exportação dos textos, e é incluído na descrição enviada ao gerar uma imagem. Campanhas antigas continuam funcionando sem esse campo. O exemplo fixo não adapta seu conteúdo ao formulário.
+
 Formulário → servidor → Gemini → validação JSON → campos editáveis → copiar/baixar → publicação manual → resultados informados → contexto das próximas campanhas.
 
 ## Função do servidor e contrato JSON

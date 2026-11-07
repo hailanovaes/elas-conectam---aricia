@@ -106,3 +106,11 @@ assert.equal(imageRoute.status,200);assert.equal((await imageRoute.json()).image
 globalThis.fetch=original;
 assert.ok((await worker.fetch(new Request(origin),{})).headers.get('content-security-policy').includes('blob:'));
 console.log('OK: geração de imagens, imagem de referência, rota protegida, cota indisponível e política para prévias locais.');
+const perfilCliente='Mãe organizando um jantar de Natal para a família e procurando uma sobremesa prática.';
+globalThis.fetch=async(url,options)=>{sent=JSON.parse(options.body);return Response.json({candidates:[{content:{parts:[{text:JSON.stringify(campaign)}]}}]});};
+assert.equal((await worker.fetch(req('/api/generate',{brief:{...brief,perfilCliente}},'correct'),env)).status,200);
+assert.equal(JSON.parse(sent.contents[0].parts[0].text).brief.perfilCliente,perfilCliente);
+for(const invalidProfile of [42,{},'a'.repeat(1201)])assert.equal((await worker.fetch(req('/api/generate',{brief:{...brief,perfilCliente:invalidProfile}},'correct'),env)).status,400);
+assert.equal((await worker.fetch(req('/api/generate',{brief:{...brief,perfilCliente:''}},'correct'),env)).status,200);
+globalThis.fetch=original;
+console.log('OK: perfil do cliente opcional encaminhado à IA e entradas inválidas rejeitadas.');

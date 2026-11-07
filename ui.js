@@ -66,7 +66,7 @@ $('#attachments').onchange=e=>{
  if(errors.length)$('#attachment-status').textContent=errors.join(' ')+' Os demais arquivos aceitos foram mantidos.';
 };
 function encodeFile(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({name:file.name,mimeType:attachmentType(file),data:String(reader.result).split(',')[1]});reader.onerror=()=>reject(new Error('Não foi possível ler '+file.name+'. Selecione o arquivo novamente.'));reader.readAsDataURL(file);});}
-function historySummary(){return state.campaigns.filter(c=>c.source==='gemini'&&c.published).slice(0,5).map(c=>({produto:c.brief.produto,titulo:c.content.titulo,publicadoEm:c.date,resultados:c.metrics}));}
+function historySummary(){return state.campaigns.filter(c=>c.source==='gemini'&&c.published).slice(0,5).map(c=>({produto:c.brief.produto,perfilCliente:c.brief.perfilCliente||'',titulo:c.content.titulo,publicadoEm:c.date,resultados:c.metrics}));}
 $('#campaign-form').onsubmit=async e=>{
  e.preventDefault();const button=$('#generate');button.disabled=true;$('#demo').disabled=true;button.textContent='✦ Preparando suas ideias…';$('#feedback').textContent='Preparando os materiais. Isso pode levar alguns segundos.';
  try{
@@ -127,7 +127,7 @@ function addImageEditor(label,image,id){
    const reference=photos.find(p=>p.name===select.value);const attachments=[];
    const referenceBlob=await readImage(reference?.assetId||image.assetId);
    if(referenceBlob){const ext=referenceBlob.type==='image/jpeg'?'jpg':referenceBlob.type==='image/webp'?'webp':'png';attachments.push(await encodeFile(new File([referenceBlob],reference?.name||'referencia.'+ext,{type:referenceBlob.type})));}
-   const prompt=('Produto: '+(currentBrief?.produto||'doce artesanal')+'. Peça: '+label+'. '+ta.value).slice(0,4000);
+   const prompt=('Produto: '+(currentBrief?.produto||'doce artesanal')+'. Público e ocasião: '+(currentBrief?.perfilCliente||'não especificados')+'. Peça: '+label+'. '+ta.value).slice(0,4000);
    const res=await fetch('/api/image',{method:'POST',headers:{'Content-Type':'application/json','x-app-password':$('#password').value},body:JSON.stringify({prompt,attachments}),signal:AbortSignal.timeout(95000)});
    const data=await res.json();if(!res.ok)throw new Error(data.error||'Não foi possível gerar a imagem.');
    if(!data.image?.mimeType?.startsWith('image/')||typeof data.image.data!=='string')throw new Error('A resposta não incluiu uma imagem válida.');
@@ -140,6 +140,7 @@ function addImageEditor(label,image,id){
 }
 function showResult(data){
  current=data;$('#empty').hidden=true;$('#result').hidden=false;$('#source-label').textContent=currentSource==='example'?'EXEMPLO FIXO · SEM IA':'CAMPANHA GERADA COM GEMINI';$('#result-title').textContent=data.titulo;$('#hypothesis').textContent=data.hipotese;$('#cover-preview').textContent=data.capa;$('#editable').replaceChildren();
+ if(currentBrief?.perfilCliente){const audience=document.createElement('p');audience.className='notice';audience.textContent='Público e ocasião: '+currentBrief.perfilCliente;$('#editable').append(audience);}
  addEditor('Título da campanha','titulo',data.titulo);addEditor('Texto de capa','capa',data.capa);addImageEditor('Capa',data.imagemCapa,'capa');
  if(!data.imagemCapa){const hint=document.createElement('p');hint.className='hint';hint.textContent='Campanha anterior à função de sugestões de imagem. Novas campanhas incluem orientações por peça.';$('#editable').append(hint);}
  data.cards.forEach((c,i)=>{const label=(currentBrief.formato.startsWith('Reel')?'Cena ':'Card ')+(i+1);addEditor(label,'cards',c,i);addImageEditor(label,data.imagensCards?.[i],'card-'+i);});
@@ -149,7 +150,7 @@ function showResult(data){
 }
 async function copyText(t){try{await navigator.clipboard.writeText(t);flash('Texto copiado.');}catch{flash('Selecione o texto e copie manualmente.');}}
 function imageText(image){return image&&typeof image.orientacao==='string'?'\nIMAGEM SUGERIDA\n'+(image.arquivo?'Usar foto anexada: '+image.arquivo:'Nova foto ou tomada a produzir')+'\n'+image.orientacao:'';}
-function fullText(){return [currentSource==='example'?'EXEMPLO FIXO — SEM IA':'CAMPANHA GEMINI',current.titulo,'HIPÓTESE A TESTAR',current.hipotese,'CAPA\n'+current.capa+imageText(current.imagemCapa),...current.cards.map((c,i)=>'CARD/CENA '+(i+1)+'\n'+c+imageText(current.imagensCards?.[i])),'LEGENDA',current.legenda,'CHAMADA',current.cta,...current.stories.map((c,i)=>'STORY '+(i+1)+'\n'+c+imageText(current.imagensStories?.[i])),'MATERIAIS',...current.capturas].join('\n\n');}
+function fullText(){return [currentSource==='example'?'EXEMPLO FIXO — SEM IA':'CAMPANHA GEMINI',current.titulo,...(currentBrief?.perfilCliente?['PÚBLICO E OCASIÃO',currentBrief.perfilCliente]:[]),'HIPÓTESE A TESTAR',current.hipotese,'CAPA\n'+current.capa+imageText(current.imagemCapa),...current.cards.map((c,i)=>'CARD/CENA '+(i+1)+'\n'+c+imageText(current.imagensCards?.[i])),'LEGENDA',current.legenda,'CHAMADA',current.cta,...current.stories.map((c,i)=>'STORY '+(i+1)+'\n'+c+imageText(current.imagensStories?.[i])),'MATERIAIS',...current.capturas].join('\n\n');}
 $('#copy-all').onclick=()=>copyText(fullText());
 function download(name,text,type){const url=URL.createObjectURL(new Blob([text],{type}));const a=document.createElement('a');a.href=url;a.download=name;a.click();setTimeout(()=>URL.revokeObjectURL(url),1000);}
 $('#download').onclick=()=>download('campanha-aricia.txt',fullText(),'text/plain;charset=utf-8');
