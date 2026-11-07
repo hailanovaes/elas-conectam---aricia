@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: brigadeiros-aricia
+    runtime: node
+    plan: free
+    buildCommand: npm run check && npm test
+    startCommand: node server.mjs
+    healthCheckPath: /healthz
+    envVars:
+      - key: NODE_VERSION
+        value: "24"
+      - key: NODE_ENV
+        value: production
+      - key: HOST
+        value: 0.0.0.0
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: gemini-3.1-flash-lite
+      - key: GEMINI_IMAGE_MODEL
+        value: gemini-3.1-flash-image
+      - key: APP_PASSWORD
+        sync: false

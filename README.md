@@ -1,5 +1,11 @@
 # Brigadeiros Arícia — Ateliê de Conteúdo
 
+## Hospedagem independente
+
+O projeto está preparado para um Web Service gratuito no Render. [Publicar no Render](https://render.com/deploy?repo=https://github.com/hailanovaes/elas-conectam---aricia) · [Passo a passo e variáveis necessárias](DEPLOY-RENDER.md).
+
+O deploy externo só estará concluído depois de conectar sua conta, configurar os segredos no Render e verificar o estado Live com o endereço final.
+
 Assistente em HTML, CSS e JavaScript, com chamada ao Gemini no servidor. Publicação manual. Paleta inspirada no cardápio fornecido: chocolate, rosa-claro e branco. O logo original não foi redesenhado nem substituído por uma reprodução.
 
 ## Usar localmente
