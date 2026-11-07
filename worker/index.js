@@ -119,9 +119,15 @@ export async function generateCampaign(env, brief, history = [], fetchImpl = fet
   throw new Error('Não foi possível concluir a geração. Suas informações foram preservadas.');
  }
  if (!response.ok) {
+  const providerError=await response.clone().json().catch(()=>({}));
+  const message=String(providerError.error?.message||'').toLowerCase();
+  console.warn('Gemini campaign request failed',response.status,providerError.error?.status||'UNKNOWN');
+  if(message.includes('api key not valid')||message.includes('api key is invalid'))throw new Error('O Google informou que a chave da API é inválida. Confira GEMINI_API_KEY no servidor.');
+  if(message.includes('expired'))throw new Error('A credencial do Google expirou. Atualize GEMINI_API_KEY no servidor.');
+  if(message.includes('leaked')||message.includes('reported as leaked'))throw new Error('O Google bloqueou a chave por exposição. Gere outra chave e atualize GEMINI_API_KEY no servidor.');
   throw new Error(response.status === 429
    ? 'Limite do Gemini atingido. Aguarde e tente novamente.'
-   : 'O Gemini não respondeu. Confira o modelo, a chave e a disponibilidade no servidor.');
+   : 'O Gemini recusou a solicitação (HTTP '+response.status+'). Confira o modelo, a chave e as permissões da conta.');
  }
  let result;
  try {
