@@ -21,7 +21,7 @@ Não envie `.env` ou a chave para repositórios ou para o navegador. A chave tem
 
 Formulário → servidor → Gemini → validação JSON → campos editáveis → copiar/baixar → publicação manual → resultados informados → contexto das próximas campanhas.
 
-O formulário aceita fotos JPG, PNG e WebP, além de PDF, TXT e CSV (UTF-8). Até 5 arquivos, 4 MB por arquivo e 8 MB no total. Word e Excel devem ser exportados para PDF ou CSV. Vídeos não são aceitos. Os anexos são enviados ao Gemini ao gerar a campanha e não ficam armazenados pela aplicação: guarde os originais. No histórico, ficam apenas os nomes, tipos e tamanhos. O exemplo sem IA não analisa anexos. A ferramenta não gera imagens nem publica conteúdo. Os textos gerados precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
+O formulário aceita fotos JPG, PNG e WebP, além de PDF, TXT e CSV (UTF-8). Até 5 arquivos, 4 MB por arquivo e 8 MB no total. Word e Excel devem ser exportados para PDF ou CSV. Vídeos não são aceitos. Fotos podem ser exibidas em cada peça, ampliadas e baixadas. Ao salvar a campanha, a associação com a foto fica guardada neste navegador. Documentos não são armazenados. Backups de texto não incluem as fotos: baixe-as separadamente. O botão “Gerar imagem com IA” está integrado à API, mas o teste real retornou cota gratuita zero da conta Google. O responsável deve liberar acesso/cota ao modelo no AI Studio para gerar imagens novas. A publicação é manual. Revise os textos e imagens antes de publicar.
 
 ## Histórico e privacidade
 

@@ -15,7 +15,7 @@ Não envie `.env` ou a chave para repositórios ou para o navegador. A chave tem
 
 ## Sem chave
 
-“Experimentar um exemplo sem IA” carrega uma campanha fixa dos panetones, claramente identificada. Não interpreta o formulário. Permite editar, copiar, baixar texto e testar histórico. A geração personalizada com Gemini exige configuração e não foi verificada com uma chave real na entrega.
+“Experimentar um exemplo sem IA” carrega uma campanha fixa dos panetones, claramente identificada. Não interpreta o formulário. Permite editar, copiar, baixar texto, escolher fotos e testar histórico. A geração de campanhas foi verificada com a API real. A geração de imagens está integrada, mas o teste real retornou HTTP 429 com cota gratuita zero para o modelo de imagens nesta conta.
 
 ## Fluxo
 
@@ -47,7 +47,7 @@ Erro: `{ "error": "Mensagem para a interface" }`. Códigos: `400` para entrada i
 
 O navegador envia `Content-Type: application/json` e `x-app-password` quando configurado. A origem deve corresponder à aplicação. A chave do Gemini é acrescentada apenas pelo servidor no cabeçalho `x-goog-api-key`. `npm test` executa os testes com provedor simulado, sem chave nem consumo real da API.
 
-Fotos e documentos anexados são enviados ao Gemini para análise. Esta versão não gera imagens nem publica conteúdo. Os textos, inclusive os gerados pela IA, precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
+Fotos e documentos anexados são enviados ao Gemini para análise. A publicação é manual. Os textos e imagens de IA precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
 
 ## Anexos
 
@@ -55,13 +55,17 @@ Fotos e documentos anexados são enviados ao Gemini para análise. Esta versão 
 
 Novas campanhas incluem `imagemCapa`, `imagensCards` e `imagensStories`. Cada sugestão tem `{ "arquivo": "nome-exato-da-foto.jpg ou string vazia", "orientacao": "Como fotografar ou compor a imagem" }`. As listas têm a mesma quantidade e ordem dos cards/cenas e stories. O servidor rejeita referências a nomes inexistentes e documentos citados como foto.
 
-A interface apresenta a sugestão junto de cada texto, com enquadramento, fundo/cores e espaço para o título. Quando não houver uma foto adequada, sugere uma nova foto/tomada. Não são geradas imagens: as orientações são textuais. É possível editar, copiar, salvar, exportar e baixar as sugestões junto da campanha. Campanhas antigas continuam abrindo e exibem um aviso quando não têm sugestões.
+A interface apresenta a sugestão junto de cada texto, com enquadramento, fundo/cores e espaço para o título. Quando não houver uma foto adequada, sugere uma nova foto/tomada. É possível escolher a foto anexada para cada peça, visualizá-la, ampliar e baixar. Também há um botão independente “Gerar imagem com IA” por peça. É possível editar, copiar, salvar, exportar e baixar as sugestões junto da campanha. Campanhas antigas continuam abrindo.
+
+### Geração e exibição de imagens
+
+`POST /api/image` recebe `{prompt, attachments: []}` com fotos opcionais de referência e devolve `{image:{mimeType,data},generated:true,note}`. Usa a mesma proteção de origem e código de acesso da geração de campanhas. O modelo padrão é `gemini-3.1-flash-image`, substituível por `GEMINI_IMAGE_MODEL` no servidor. A requisição ao Google permite as modalidades TEXT e IMAGE, com prazo de 90 segundos. Imagens de IA são identificadas como tal e exigem conferência da aparência do produto. Não são criadas automaticamente em lote: cada clique solicita uma imagem. A cota e os custos dependem da conta Google. O teste real recebeu cota gratuita zero; habilitação de faturamento ou cota deve ser feita pelo proprietário no AI Studio, não pela aplicação.
 
 ### Formatos e armazenamento dos anexos
 
 O formulário aceita JPG, PNG, WebP, PDF, TXT e CSV (UTF-8), com prévias de fotos e remoção individual. Limites: 5 arquivos, 4 MB por arquivo e 8 MB no total. Word e Excel devem ser exportados para PDF ou CSV; vídeos não são aceitos. O navegador envia `attachments: [{name, mimeType, data}]` com base64 no JSON de `POST /api/generate`. O servidor valida tipo, assinatura básica, codificação e tamanho antes da chamada ao Gemini. Fotos e PDFs seguem como `inlineData`; TXT/CSV seguem como texto. Limite do corpo HTTP: 12 MiB, incluindo a expansão base64.
 
-Os arquivos são processados somente para a geração atual e não são gravados pela aplicação no servidor, no histórico ou nos backups. Apenas nome, tipo e tamanho ficam na campanha salva. Ao reabrir ou recarregar, anexe os originais novamente para outra geração. O tratamento pelo Google segue as condições da conta Gemini utilizada. O botão de exemplo sem IA não analisa anexos. Instruções encontradas em anexos são tratadas como dados, não como comandos.
+Documentos não são armazenados. Fotos usadas nas campanhas e imagens geradas ficam no IndexedDB deste navegador; campanhas guardam as referências locais. É necessário salvar a campanha após escolher ou gerar uma foto. Limpar os dados do navegador apaga também as imagens. Os backups JSON incluem textos e resultados, sem os arquivos de imagem: baixe as imagens separadamente. Não existe sincronização entre dispositivos. Se o armazenamento de imagens falhar, a aplicação mantém a prévia na sessão e orienta baixar uma cópia. O tratamento pelo Google segue as condições da conta Gemini utilizada. O exemplo sem IA permite mostrar fotos manualmente, mas não as analisa nem gera imagens sem chamada à API. Instruções encontradas em anexos são tratadas como dados, não como comandos.
 
 ## Histórico e privacidade
 

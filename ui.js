@@ -11,6 +11,34 @@ $('#regiao').value=state.brand.regiao;
 $('#brand-form').onsubmit=e=>{e.preventDefault();state.brand={nome:$('#brand-name').value,regiao:$('#brand-region').value,tom:$('#brand-tone').value,diferenciais:$('#brand-diff').value};if(persist()){ $('#regiao').value=state.brand.regiao;flash('Informações salvas neste navegador.');}};
 function getBrief(){return Object.fromEntries(new FormData($('#campaign-form')));}
 let selectedFiles=[];
+const imageMemory=new Map(),imageURLs=new Map(),fileIds=new WeakMap();
+let imageDatabase;
+function openImageDatabase(){
+ if(!imageDatabase)imageDatabase=new Promise((resolve,reject)=>{const request=indexedDB.open('aricia-images',1);request.onupgradeneeded=()=>request.result.createObjectStore('photos');request.onsuccess=()=>resolve(request.result);request.onerror=()=>reject(request.error);});
+ return imageDatabase;
+}
+async function storeImage(blob){
+ const id=crypto.randomUUID();imageMemory.set(id,blob);
+ try{const db=await openImageDatabase();await new Promise((resolve,reject)=>{const tx=db.transaction('photos','readwrite');tx.objectStore('photos').put(blob,id);tx.oncomplete=resolve;tx.onerror=()=>reject(tx.error);});}
+ catch{flash('A imagem aparece nesta sessão. Baixe uma cópia: o navegador não permitiu salvar a foto.');}
+ return id;
+}
+async function readImage(id){
+ if(!id)return null;if(imageMemory.has(id))return imageMemory.get(id);
+ try{const db=await openImageDatabase();return await new Promise((resolve,reject)=>{const req=db.transaction('photos').objectStore('photos').get(id);req.onsuccess=()=>resolve(req.result||null);req.onerror=()=>reject(req.error);});}catch{return null;}
+}
+function fileAsset(file){if(!fileIds.has(file))fileIds.set(file,storeImage(file));return fileIds.get(file);}
+async function photoOptions(){
+ const photos=new Map((currentBrief?.anexos||[]).filter(f=>f.mimeType?.startsWith('image/')&&f.assetId).map(f=>[f.name,f]));
+ for(const file of selectedFiles.filter(f=>attachmentType(f).startsWith('image/')))photos.set(file.name,{name:file.name,mimeType:attachmentType(file),assetId:await fileAsset(file)});
+ return [...photos.values()];
+}
+function imageURL(id,blob){if(!imageURLs.has(id))imageURLs.set(id,URL.createObjectURL(blob));return imageURLs.get(id);}
+window.addEventListener('pagehide',()=>{for(const url of imageURLs.values())URL.revokeObjectURL(url);imageURLs.clear();});
+function showLargeImage(src,alt){$('#large-image').src=src;$('#large-image').alt=alt;$('#image-dialog').showModal();}
+$('#close-image').onclick=()=>$('#image-dialog').close();
+$('#image-dialog').onclick=e=>{if(e.target===$('#image-dialog'))$('#image-dialog').close();};
+function downloadPhoto(src,name){const a=document.createElement('a');a.href=src;a.download=name;a.click();}
 const allowedFiles={'jpg':'image/jpeg','jpeg':'image/jpeg','png':'image/png','webp':'image/webp','pdf':'application/pdf','txt':'text/plain','csv':'text/csv'};
 function attachmentType(file){return allowedFiles[file.name.split('.').pop().toLowerCase()]||'';}
 function renderAttachments(){
@@ -22,6 +50,7 @@ function renderAttachments(){
   const remove=document.createElement('button');remove.type='button';remove.className='text-button';remove.textContent='Remover';remove.setAttribute('aria-label','Remover '+file.name);remove.onclick=()=>{selectedFiles.splice(index,1);renderAttachments();};row.append(info,remove);list.append(row);
  });
  $('#attachment-status').textContent=selectedFiles.length?selectedFiles.length+' arquivo(s) selecionado(s). Serão analisados ao gerar a campanha.':'';
+ if(current)showResult(current);
 }
 $('#attachments').onchange=e=>{
  const next=[...selectedFiles];const errors=[];
@@ -45,7 +74,8 @@ $('#campaign-form').onsubmit=async e=>{
   const attachments=await Promise.all(files.map(encodeFile));
   const res=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','x-app-password':$('#password').value},body:JSON.stringify({brief:{...brief,marca:state.brand},history:historySummary(),attachments}),signal:AbortSignal.timeout(45000)});
   const data=await res.json();if(!res.ok)throw Error(data.error||'Não foi possível gerar.');
-  currentBrief={...brief,anexos:files.map(file=>({name:file.name,mimeType:attachmentType(file),size:file.size}))};currentSource='gemini';currentId=null;showResult(data.campaign);
+  const anexos=await Promise.all(files.map(async file=>({name:file.name,mimeType:attachmentType(file),size:file.size,...(attachmentType(file).startsWith('image/')?{assetId:await fileAsset(file)}:{})})));
+  currentBrief={...brief,anexos};currentSource='gemini';currentId=null;showResult(data.campaign);
   $('#feedback').textContent='Campanha criada'+(files.length?' com '+files.length+' anexo(s) enviado(s) para análise':'')+'. Revise as informações antes de publicar.';
  }catch(err){$('#feedback').textContent=err.name==='TimeoutError'?'A geração demorou mais que o esperado. Tente novamente. Seus anexos continuam selecionados.':err.message;}
  finally{button.disabled=false;$('#demo').disabled=false;button.textContent='✦ Criar minha campanha';}
@@ -72,7 +102,41 @@ function addImageEditor(label,image,id){
  const l=document.createElement('label');l.htmlFor='image-'+id;l.textContent='Imagem sugerida · '+label;
  const ta=document.createElement('textarea');ta.id=l.htmlFor;ta.rows=4;ta.maxLength=1800;ta.value=image.orientacao;ta.oninput=()=>{image.orientacao=ta.value;};
  const copy=document.createElement('button');copy.type='button';copy.className='text-button';copy.textContent='Copiar sugestão';copy.onclick=()=>copyText((image.arquivo?'Foto: '+image.arquivo+'\n':'Nova foto/tomada\n')+ta.value);
- box.append(l,source,ta,copy);$('#editable').append(box);
+ const preview=document.createElement('div');preview.className='photo-preview';
+ const chooseLabel=document.createElement('label');chooseLabel.htmlFor='photo-'+id;chooseLabel.textContent='Foto para '+label;
+ const select=document.createElement('select');select.id=chooseLabel.htmlFor;const blank=document.createElement('option');blank.value='';blank.textContent='Escolher uma foto anexada';select.append(blank);
+ const actions=document.createElement('div');actions.className='photo-actions';
+ const generate=document.createElement('button');generate.type='button';generate.className='secondary';generate.textContent='✦ Gerar imagem com IA';
+ const feedback=document.createElement('p');feedback.className='hint';feedback.setAttribute('role','status');
+ let photos=[];let drawing=0;
+ async function draw(){
+  const revision=++drawing;const original=photos.find(p=>p.name===image.arquivo);const assetId=image.assetId||original?.assetId;
+  const blob=await readImage(assetId);if(revision!==drawing)return;preview.replaceChildren();
+  if(blob){const src=imageURL(assetId,blob);const img=document.createElement('img');img.src=src;img.alt=(image.generated?'Imagem gerada por IA para ':'Foto para ')+label;img.className='campaign-photo';
+   const enlarge=document.createElement('button');enlarge.type='button';enlarge.className='photo-open';enlarge.setAttribute('aria-label','Ampliar imagem de '+label);enlarge.onclick=()=>showLargeImage(src,img.alt);enlarge.append(img);
+   const badge=document.createElement('p');badge.className='photo-badge';badge.textContent=image.generated?'Imagem gerada por IA · confira o produto antes de publicar':'Foto real anexada · '+(image.arquivo||label);
+   const downloadButton=document.createElement('button');downloadButton.type='button';downloadButton.className='text-button';downloadButton.textContent='Baixar imagem';downloadButton.onclick=()=>downloadPhoto(src,image.generated?'aricia-'+id+'.'+(blob.type==='image/jpeg'?'jpg':blob.type==='image/webp'?'webp':'png'):(image.arquivo||'foto-aricia.png'));
+   preview.append(enlarge,badge,downloadButton);
+  }else{const placeholder=document.createElement('p');placeholder.className='photo-placeholder';placeholder.textContent=image.assetId||image.arquivo?'Foto indisponível neste navegador. Anexe o original novamente ou gere outra imagem.':'Escolha uma foto anexada ou gere uma imagem com IA para visualizar aqui.';preview.append(placeholder);}
+ }
+ photoOptions().then(options=>{photos=options;for(const photo of photos){const option=document.createElement('option');option.value=photo.name;option.textContent=photo.name;select.append(option);}if(image.arquivo)select.value=image.arquivo;draw();});
+ select.onchange=()=>{image.arquivo=select.value;const selected=photos.find(photo=>photo.name===select.value);if(selected)image.assetId=selected.assetId;else delete image.assetId;delete image.generated;source.textContent=image.arquivo?'Usar foto anexada: '+image.arquivo:'Nova foto ou tomada a produzir';draw();};
+ generate.onclick=async()=>{
+  generate.disabled=true;generate.textContent='Gerando imagem…';feedback.textContent='A imagem será criada usando a conta Gemini configurada. Aguarde.';
+  try{
+   const reference=photos.find(p=>p.name===select.value);const attachments=[];
+   const referenceBlob=await readImage(reference?.assetId||image.assetId);
+   if(referenceBlob){const ext=referenceBlob.type==='image/jpeg'?'jpg':referenceBlob.type==='image/webp'?'webp':'png';attachments.push(await encodeFile(new File([referenceBlob],reference?.name||'referencia.'+ext,{type:referenceBlob.type})));}
+   const prompt=('Produto: '+(currentBrief?.produto||'doce artesanal')+'. Peça: '+label+'. '+ta.value).slice(0,4000);
+   const res=await fetch('/api/image',{method:'POST',headers:{'Content-Type':'application/json','x-app-password':$('#password').value},body:JSON.stringify({prompt,attachments}),signal:AbortSignal.timeout(95000)});
+   const data=await res.json();if(!res.ok)throw new Error(data.error||'Não foi possível gerar a imagem.');
+   if(!data.image?.mimeType?.startsWith('image/')||typeof data.image.data!=='string')throw new Error('A resposta não incluiu uma imagem válida.');
+   const bytes=Uint8Array.from(atob(data.image.data),c=>c.charCodeAt(0));const blob=new Blob([bytes],{type:data.image.mimeType});
+   image.assetId=await storeImage(blob);image.generated=true;image.arquivo='';select.value='';source.textContent='Imagem criada com IA';await draw();feedback.textContent='Imagem pronta. Confira e salve a campanha para manter a associação.';
+  }catch(error){feedback.textContent=error.name==='TimeoutError'?'A geração demorou mais que o esperado. Tente novamente.':error.message;}
+  finally{generate.disabled=false;generate.textContent='✦ Gerar imagem com IA';}
+ };
+ actions.append(generate);box.append(l,source,preview,chooseLabel,select,ta,copy,actions,feedback);$('#editable').append(box);
 }
 function showResult(data){
  current=data;$('#empty').hidden=true;$('#result').hidden=false;$('#source-label').textContent=currentSource==='example'?'EXEMPLO FIXO · SEM IA':'CAMPANHA GERADA COM GEMINI';$('#result-title').textContent=data.titulo;$('#hypothesis').textContent=data.hipotese;$('#cover-preview').textContent=data.capa;$('#editable').replaceChildren();
