@@ -1,0 +1,11 @@
+import {mkdir,readFile,writeFile,copyFile} from 'node:fs/promises';
+await mkdir('dist/server',{recursive:true});
+await mkdir('dist/.openai',{recursive:true});
+const html=await readFile('index.html','utf8');
+const css=await readFile('style.css','utf8');
+const js=await readFile('ui.js','utf8');
+let worker=await readFile('worker/index.js','utf8');
+worker=worker.replace('/*PAGE*/ ""',JSON.stringify(html.replace('/*STYLE*/',css).replace('/*SCRIPT*/',js)));
+await writeFile('dist/server/index.js',worker);
+await copyFile('.openai/hosting.json','dist/.openai/hosting.json');
+console.log('Build concluído.');
