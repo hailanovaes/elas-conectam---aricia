@@ -21,9 +21,11 @@ Não envie `.env` ou a chave para repositórios ou para o navegador. A chave tem
 
 Formulário → servidor → Gemini → validação JSON → campos editáveis → copiar/baixar → publicação manual → resultados informados → contexto das próximas campanhas.
 
-As fotos/vídeos são usados diretamente na rede social. Esta versão não recebe arquivos, gera imagens ou publica conteúdo. Os textos, inclusive os gerados pela IA, precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
+O formulário aceita fotos JPG, PNG e WebP, além de PDF, TXT e CSV (UTF-8). Até 5 arquivos, 4 MB por arquivo e 8 MB no total. Word e Excel devem ser exportados para PDF ou CSV. Vídeos não são aceitos. Fotos podem ser exibidas em cada peça, ampliadas e baixadas. Ao salvar a campanha, a associação com a foto fica guardada neste navegador. Documentos não são armazenados. Backups de texto não incluem as fotos: baixe-as separadamente. O botão “Gerar imagem com IA” está integrado à API, mas o teste real retornou cota gratuita zero da conta Google. O responsável deve liberar acesso/cota ao modelo no AI Studio para gerar imagens novas. A publicação é manual. Revise os textos e imagens antes de publicar.
 
 ## Histórico e privacidade
+
+Novas campanhas sugerem uma imagem para a capa e para cada card/cena e story, indicando o nome de uma foto anexada adequada ou orientando uma nova captura. As sugestões são editáveis e acompanham os textos ao copiar, baixar ou salvar. Trata-se de orientação visual, não de geração de imagens.
 
 Campanhas, perfil e resultados ficam apenas no localStorage do navegador/dispositivo. Não sincronizam entre dispositivos. Limpar dados do navegador pode apagar o histórico. Use Exportar backup e Importar backup. Chave e código de acesso não são salvos nesse histórico. Não inclua dados de clientes ou informações pessoais sensíveis nos campos. Perfil, briefing e resumo de até cinco campanhas publicadas e geradas com IA são enviados ao Gemini para contextualização. A publicação no Instagram e o registro de métricas são manuais. O exemplo fixo não é usado como histórico de IA.
 
