@@ -21,7 +21,7 @@ Não envie `.env` ou a chave para repositórios ou para o navegador. A chave tem
 
 Formulário → servidor → Gemini → validação JSON → campos editáveis → copiar/baixar → publicação manual → resultados informados → contexto das próximas campanhas.
 
-As fotos/vídeos são usados diretamente na rede social. Esta versão não recebe arquivos, gera imagens ou publica conteúdo. Os textos, inclusive os gerados pela IA, precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
+O formulário aceita fotos JPG, PNG e WebP, além de PDF, TXT e CSV (UTF-8). Até 5 arquivos, 4 MB por arquivo e 8 MB no total. Word e Excel devem ser exportados para PDF ou CSV. Vídeos não são aceitos. Os anexos são enviados ao Gemini ao gerar a campanha e não ficam armazenados pela aplicação: guarde os originais. No histórico, ficam apenas os nomes, tipos e tamanhos. O exemplo sem IA não analisa anexos. A ferramenta não gera imagens nem publica conteúdo. Os textos gerados precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
 
 ## Histórico e privacidade
 

@@ -1,6 +1,6 @@
 import http from 'node:http';
 import {readFile} from 'node:fs/promises';
-import worker from './worker/index.js';
+import worker,{MAX_REQUEST_BYTES} from './worker/index.js';
 const port=Number(process.env.PORT||3000);
 http.createServer(async(req,res)=>{
  try {
@@ -10,7 +10,7 @@ http.createServer(async(req,res)=>{
  html=html.replace('/*STYLE*/',await readFile(new URL('./style.css',import.meta.url),'utf8')).replace('/*SCRIPT*/',await readFile(new URL('./ui.js',import.meta.url),'utf8'));
  res.writeHead(200,{'content-type':'text/html; charset=utf-8'});res.end(html);return;
  }
- const chunks=[];let bytes=0;for await(const c of req){bytes+=c.length;if(bytes>30000){res.writeHead(413,{'content-type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'Dados muito grandes.'}));return;}chunks.push(c);}
+ const chunks=[];let bytes=0;for await(const c of req){bytes+=c.length;if(bytes>MAX_REQUEST_BYTES){res.writeHead(413,{'content-type':'application/json; charset=utf-8'});res.end(JSON.stringify({error:'Dados muito grandes. Reduza o tamanho dos anexos.'}));return;}chunks.push(c);}
  const request=new Request(url,{method:req.method,headers:req.headers,...(req.method==='POST'?{body:Buffer.concat(chunks)}:{})});
  const response=await worker.fetch(request,process.env);
  res.writeHead(response.status,Object.fromEntries(response.headers));res.end(Buffer.from(await response.arrayBuffer()));

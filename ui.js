@@ -10,8 +10,46 @@ function fillBrand(){$('#brand-name').value=state.brand.nome;$('#brand-region').
 $('#regiao').value=state.brand.regiao;
 $('#brand-form').onsubmit=e=>{e.preventDefault();state.brand={nome:$('#brand-name').value,regiao:$('#brand-region').value,tom:$('#brand-tone').value,diferenciais:$('#brand-diff').value};if(persist()){ $('#regiao').value=state.brand.regiao;flash('Informações salvas neste navegador.');}};
 function getBrief(){return Object.fromEntries(new FormData($('#campaign-form')));}
+let selectedFiles=[];
+const allowedFiles={'jpg':'image/jpeg','jpeg':'image/jpeg','png':'image/png','webp':'image/webp','pdf':'application/pdf','txt':'text/plain','csv':'text/csv'};
+function attachmentType(file){return allowedFiles[file.name.split('.').pop().toLowerCase()]||'';}
+function renderAttachments(){
+ const list=$('#attachment-list');list.replaceChildren();
+ selectedFiles.forEach((file,index)=>{
+  const row=document.createElement('div');row.className='attachment-row';
+  if(attachmentType(file).startsWith('image/')){const image=document.createElement('img');const url=URL.createObjectURL(file);image.src=url;image.alt='Prévia de '+file.name;image.onload=image.onerror=()=>URL.revokeObjectURL(url);row.append(image);}
+  const info=document.createElement('span');info.textContent=file.name+' · '+(file.size/1024/1024).toFixed(2)+' MB';
+  const remove=document.createElement('button');remove.type='button';remove.className='text-button';remove.textContent='Remover';remove.setAttribute('aria-label','Remover '+file.name);remove.onclick=()=>{selectedFiles.splice(index,1);renderAttachments();};row.append(info,remove);list.append(row);
+ });
+ $('#attachment-status').textContent=selectedFiles.length?selectedFiles.length+' arquivo(s) selecionado(s). Serão analisados ao gerar a campanha.':'';
+}
+$('#attachments').onchange=e=>{
+ const next=[...selectedFiles];const errors=[];
+ for(const file of e.target.files){
+  if(!attachmentType(file)){errors.push(file.name+': formato não aceito.');continue;}
+  if(!file.size||file.size>4*1024*1024){errors.push(file.name+': deve ter conteúdo e até 4 MB.');continue;}
+  if(next.some(f=>f.name===file.name&&f.size===file.size&&f.lastModified===file.lastModified))continue;
+  if(next.length>=5){errors.push('O limite é de 5 arquivos.');continue;}
+  if(next.reduce((sum,f)=>sum+f.size,0)+file.size>8*1024*1024){errors.push('O total dos anexos deve ser de até 8 MB.');continue;}
+  next.push(file);
+ }
+ selectedFiles=next;e.target.value='';renderAttachments();
+ if(errors.length)$('#attachment-status').textContent=errors.join(' ')+' Os demais arquivos aceitos foram mantidos.';
+};
+function encodeFile(file){return new Promise((resolve,reject)=>{const reader=new FileReader();reader.onload=()=>resolve({name:file.name,mimeType:attachmentType(file),data:String(reader.result).split(',')[1]});reader.onerror=()=>reject(new Error('Não foi possível ler '+file.name+'. Selecione o arquivo novamente.'));reader.readAsDataURL(file);});}
 function historySummary(){return state.campaigns.filter(c=>c.source==='gemini'&&c.published).slice(0,5).map(c=>({produto:c.brief.produto,titulo:c.content.titulo,publicadoEm:c.date,resultados:c.metrics}));}
-$('#campaign-form').onsubmit=async e=>{e.preventDefault();const button=$('#generate');button.disabled=true;button.textContent='✦ Preparando suas ideias…';$('#feedback').textContent='Isso pode levar alguns segundos.';try{const brief=getBrief();const res=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','x-app-password':$('#password').value},body:JSON.stringify({brief:{...brief,marca:state.brand},history:historySummary()}),signal:AbortSignal.timeout(45000)});const data=await res.json();if(!res.ok)throw Error(data.error||'Não foi possível gerar.');currentBrief=brief;currentSource='gemini';currentId=null;showResult(data.campaign);$('#feedback').textContent='Campanha criada. Revise as informações antes de publicar.';}catch(err){$('#feedback').textContent=err.name==='TimeoutError'?'A geração demorou mais que o esperado. Tente novamente.':err.message; }finally{button.disabled=false;button.textContent='✦ Criar minha campanha';}};
+$('#campaign-form').onsubmit=async e=>{
+ e.preventDefault();const button=$('#generate');button.disabled=true;$('#demo').disabled=true;button.textContent='✦ Preparando suas ideias…';$('#feedback').textContent='Preparando os materiais. Isso pode levar alguns segundos.';
+ try{
+  const files=[...selectedFiles];const brief=getBrief();
+  const attachments=await Promise.all(files.map(encodeFile));
+  const res=await fetch('/api/generate',{method:'POST',headers:{'Content-Type':'application/json','x-app-password':$('#password').value},body:JSON.stringify({brief:{...brief,marca:state.brand},history:historySummary(),attachments}),signal:AbortSignal.timeout(45000)});
+  const data=await res.json();if(!res.ok)throw Error(data.error||'Não foi possível gerar.');
+  currentBrief={...brief,anexos:files.map(file=>({name:file.name,mimeType:attachmentType(file),size:file.size}))};currentSource='gemini';currentId=null;showResult(data.campaign);
+  $('#feedback').textContent='Campanha criada'+(files.length?' com '+files.length+' anexo(s) enviado(s) para análise':'')+'. Revise as informações antes de publicar.';
+ }catch(err){$('#feedback').textContent=err.name==='TimeoutError'?'A geração demorou mais que o esperado. Tente novamente. Seus anexos continuam selecionados.':err.message;}
+ finally{button.disabled=false;$('#demo').disabled=false;button.textContent='✦ Criar minha campanha';}
+};
 const example={titulo:'Um presente que cabe no bolso',hipotese:'Exemplo fixo, não gerado por IA: apresentar o formato do nanotone pode despertar curiosidade. Teste o interesse e as consultas recebidas.',capa:'Panetone de bolso.\nAfeto que cabe na mão.',cards:['Já conhece o nanotone? Um panetone de bolso recheado e coberto com chocolate.','Nos panetones caseiros da Arícia, o recheio pode ser escolhido pelo cliente. Consulte as opções disponíveis.','Para presentear ou se presentear: conheça as opções de panetones e nanotones.','São Paulo e ABC Paulista: consulte atendimento para seu bairro e disponibilidade pelo WhatsApp.'],legenda:'Tem carinho que cabe na palma da mão. ♡\n\nO nanotone da Brigadeiros Arícia é um panetone de bolso recheado e coberto com chocolate. E os panetones caseiros têm recheios que você pode escolher — consulte as opções disponíveis.\n\nAtendimento em São Paulo e ABC Paulista, mediante consulta para o bairro.\n\nQuer conhecer as opções? Fale com a Arícia pelo link da bio.',cta:'Consulte opções, disponibilidade e atendimento para seu bairro no WhatsApp (11) 95329-6311.',stories:['Uma doçura de bolso: você já conhece o nanotone? Use uma foto real do produto.','Panetones caseiros com recheios escolhidos por você. Consulte as opções disponíveis.','Quer conhecer as opções? Consulte pelo WhatsApp. Atendimento para São Paulo e ABC sujeito à confirmação do bairro.'],capturas:['Escolha uma foto real que mostre o formato do nanotone.','Se possível, registre o interior de uma unidade para mostrar o recheio. Não use imagens que não correspondam ao produto.']};
 $('#demo').onclick=()=>{currentId=null;currentSource='example';currentBrief={...getBrief(),produto:'Panetones recheados e nanotones',formato:'Carrossel'};showResult(structuredClone(example));$('#feedback').textContent='Exemplo fixo dos panetones. Não usa Gemini nem adapta os campos preenchidos.';};
 function addEditor(label,key,value,index){const item=document.createElement('div');item.className='editable-item';const head=document.createElement('div');head.className='editable-header';const l=document.createElement('label');const id='edit-'+key+(index??'');l.htmlFor=id;l.textContent=label;const copy=document.createElement('button');copy.type='button';copy.className='text-button';copy.textContent='Copiar';const ta=document.createElement('textarea');ta.id=id;ta.value=value;ta.maxLength=5000;ta.rows=key==='legenda'?7:3;copy.onclick=()=>copyText(ta.value);ta.oninput=()=>{if(index!==undefined)current[key][index]=ta.value;else current[key]=ta.value;if(key==='capa')$('#cover-preview').textContent=ta.value;if(key==='titulo')$('#result-title').textContent=ta.value;};head.append(l,copy);item.append(head,ta);$('#editable').append(item);}

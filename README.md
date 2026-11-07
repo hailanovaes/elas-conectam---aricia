@@ -47,7 +47,13 @@ Erro: `{ "error": "Mensagem para a interface" }`. Códigos: `400` para entrada i
 
 O navegador envia `Content-Type: application/json` e `x-app-password` quando configurado. A origem deve corresponder à aplicação. A chave do Gemini é acrescentada apenas pelo servidor no cabeçalho `x-goog-api-key`. `npm test` executa os testes com provedor simulado, sem chave nem consumo real da API.
 
-As fotos/vídeos são usados diretamente na rede social. Esta versão não recebe arquivos, gera imagens ou publica conteúdo. Os textos, inclusive os gerados pela IA, precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
+Fotos e documentos anexados são enviados ao Gemini para análise. Esta versão não gera imagens nem publica conteúdo. Os textos, inclusive os gerados pela IA, precisam de revisão. Não divulgar preços. Disponibilidade, sabores e entregas precisam ser confirmados pela Arícia.
+
+## Anexos
+
+O formulário aceita JPG, PNG, WebP, PDF, TXT e CSV (UTF-8), com prévias de fotos e remoção individual. Limites: 5 arquivos, 4 MB por arquivo e 8 MB no total. Word e Excel devem ser exportados para PDF ou CSV; vídeos não são aceitos. O navegador envia `attachments: [{name, mimeType, data}]` com base64 no JSON de `POST /api/generate`. O servidor valida tipo, assinatura básica, codificação e tamanho antes da chamada ao Gemini. Fotos e PDFs seguem como `inlineData`; TXT/CSV seguem como texto. Limite do corpo HTTP: 12 MiB, incluindo a expansão base64.
+
+Os arquivos são processados somente para a geração atual e não são gravados pela aplicação no servidor, no histórico ou nos backups. Apenas nome, tipo e tamanho ficam na campanha salva. Ao reabrir ou recarregar, anexe os originais novamente para outra geração. O tratamento pelo Google segue as condições da conta Gemini utilizada. O botão de exemplo sem IA não analisa anexos. Instruções encontradas em anexos são tratadas como dados, não como comandos.
 
 ## Histórico e privacidade
 
